@@ -1,0 +1,9 @@
+requests==2.32.3
+aiohttp==3.9.5
+pydantic==2.7.1
+rich==13.7.1
+python-dotenv==1.0.1
+tenacity==8.3.0
+click==8.1.7
+fake-useragent==1.5.1
+loguru==0.7.2
