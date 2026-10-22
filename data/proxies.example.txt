@@ -1,0 +1,4 @@
+# One proxy per line: host:port or user:pass@host:port
+# Copy to proxies.txt and fill in your own pool.
+127.0.0.1:8080
+user:pass@proxy.example.com:3128
